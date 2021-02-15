@@ -5,22 +5,25 @@ FROM debian:10.5-slim AS builder
 RUN echo 'deb http://ftp.fr.debian.org/debian/ bullseye main contrib non-free' >> /etc/apt/sources.list \
     && apt-get update \
     && apt-get install -y --no-install-recommends \
-        curl=7.72.0-* \
+        curl=7.74.0-* \
         # for C/C++ tools
         make=4.3-* \
-        g\+\+=4:10.1.0-* \
-        python3=3.8.2-* \
+        g\+\+=4:10.2.1-* \
+        python3=3.9.1-* \
         libpcre3-dev=2:8.39-* \
         unzip=6.0-* \
         xz-utils=5.2.4-* \
         # for Frama-C
-        ocaml=4.08.1-* \
+        ocaml=4.11.1-* \
         ocaml-findlib=1.8.1-* \
         libfindlib-ocaml-dev=1.8.1-* \
         libocamlgraph-ocaml-dev=1.8.8-* \
         libyojson-ocaml-dev=1.7.0-* \
-        libzarith-ocaml-dev=1.9.1-* \
-        menhir=20200624-* \
+        libzarith-ocaml-dev=1.11-* \
+        menhir=20201216-* \
+    # Hadolint tool
+    && curl -ksSLO https://github.com/hadolint/hadolint/releases/download/v1.21.0/hadolint-Linux-x86_64 \
+    && mv /hadolint-Linux-x86_64 /hadolint \
     # sonar-scanner
     && curl -ksSLO https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-4.4.0.2170.zip \
     && unzip sonar-scanner-cli-4.4.0.2170.zip \
@@ -99,6 +102,10 @@ RUN addgroup sonar-scanner \
             "$SONAR_SCANNER_HOME/.pylint.d" \
             "$SRC_DIR"
 
+# Add hadolint from builder stage
+COPY --from=builder /hadolint /opt
+RUN chmod 700 /opt/hadolint
+
 # Add sonar-scanner from builder
 COPY --from=builder /sonar-scanner/bin/sonar-scanner \
     "$SONAR_SCANNER_HOME/bin"
@@ -132,9 +139,9 @@ RUN echo 'deb http://ftp.fr.debian.org/debian/ bullseye main contrib non-free' >
     && mkdir -p /usr/share/man/man1 \
     && apt-get install -y --no-install-recommends \
             # Needed by sonar-scanner
-            openjdk-11-jre-headless=11.0.8* \
+            openjdk-11-jre-headless=11.0.10* \
             # Needed by Pylint
-            python3=3.8.2-* \
+            python3=3.9.1-* \
             python3-pip=20.1.1-* \
             # Vera++
             vera\+\+=1.2.1-* \
@@ -143,16 +150,16 @@ RUN echo 'deb http://ftp.fr.debian.org/debian/ bullseye main contrib non-free' >
             # Needed by Frama-C
             ocaml-findlib=1.8.1-* \
             libocamlgraph-ocaml-dev=1.8.8-* \
-            libzarith-ocaml=1.9.1-* \
+            libzarith-ocaml=1.11-* \
             libyojson-ocaml=1.7.0-* \
             # Needed by Infer
-            libsqlite3-0=3.33.0-* \
-            libtinfo5=6.2-* \
+            libsqlite3-0=3.34.1-* \
+            libtinfo5=6.2* \
             python2.7=2.7.18-* \
             # Compilation tools needed by Infer
-            gcc=4:10.1.0-* \
-            g\+\+=4:10.1.0-* \
-            clang=1:9.0-* \
+            gcc=4:10.2.1-* \
+            g\+\+=4:10.2.1-* \
+            clang=1:11.0-* \
             make=4.3-* \
     && rm -rf /var/lib/apt/lists/* \
     && rm -rf /usr/local/man \
@@ -175,11 +182,12 @@ RUN echo 'deb http://ftp.fr.debian.org/debian/ bullseye main contrib non-free' >
     # Infer
     && ln -s "/opt/infer-linux64-v0.17.0/bin/infer" /usr/local/bin/infer
 
-# Make sonar-scanner, CNES pylint and C/C++ tools executable
+# Make sonar-scanner, CNES pylint, C/C++ and hadolint tools executable
 ENV PYTHONPATH="$PYTHONPATH:/opt/python/cnes-pylint-extension-5.0.0/checkers" \
     PATH="$SONAR_SCANNER_HOME/bin:/usr/local/bin:$PATH" \
     PYLINTHOME="$SONAR_SCANNER_HOME/.pylint.d" \
-    JAVA_HOME="/usr/lib/jvm/java-11-openjdk-amd64"
+    JAVA_HOME="/usr/lib/jvm/java-11-openjdk-amd64" \
+    PATH="/opt:$PATH"
 
 # Switch to an unpriviledged user
 USER sonar-scanner

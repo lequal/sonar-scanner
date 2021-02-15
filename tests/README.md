@@ -55,6 +55,9 @@ The `tests/` folder contains both test scripts and some dummy projects to analyz
 1. Infer
     * file: infer.bash
     * purpose: Check that Infer can be launched from within the container to analyze C/C++ projects.
+1. Hadolint
+    * file: hadolint.bash
+    * purpose: Check that hadolint can be launched from within the container to analyze Dockerfiles.
 
 ### How to run all the tests
 
