@@ -19,13 +19,17 @@ on:
     branches:
       - '*'
     paths-ignore:
-      - '*.md'
-
+      - '*.md' 
+  workflow_dispatch:
+    branches:
+      - '*'
+    paths-ignore:
+      - '*.md' 
 # Variables to configure the workflow
 env:
   DOCKERFILE_PATH: '.'
   DOCKERFILE_FILENAME: 'Dockerfile'
-  DOCKER_IMAGE_NAME: 'lequal/sonar-scanner'
+  DOCKER_IMAGE_NAME: 'lequal/sonar-scanner-vhdl'
 
 jobs:
   # Job that builds the image and upload it as an artifact
@@ -74,10 +78,12 @@ jobs:
             branch=${{ github.head_ref }}
           fi
           echo "Cloning the server repo on branch $branch..."
-          if ! git clone https://github.com/cnescatlab/sonarqube.git -b "$branch" tmpserver;
+          # if ! git clone https://github.com/cnescatlab/sonarqube.git -b "$branch" tmpserver;
+            if ! git clone https://github.com/VHDLTool/Docker-sonar-sonarqube.git -b "$branch" tmpserver;
           then
             echo "No branch $branch found on the server repository, using develop"
-            git clone https://github.com/cnescatlab/sonarqube.git -b develop tmpserver
+            #git clone https://github.com/cnescatlab/sonarqube.git -b develop tmpserver
+            git clone https://github.com/VHDLTool/Docker-sonar-sonarqube.git -b develop tmpserver
           fi
           echo "Building the server image..."
           docker build -t lequal/sonarqube:latest tmpserver/

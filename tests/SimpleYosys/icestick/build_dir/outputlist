@@ -1,0 +1,17 @@
+
+
+  wire output 6 \led5
+
+  wire output 5 \led4
+
+  wire output 4 \led3
+
+  wire output 3 \led2
+
+  wire output 2 \led1
+
+  connect \led1 \leds [4]
+  connect \led2 \leds [3]
+  connect \led3 \leds [2]
+  connect \led4 \leds [1]
+  connect \led5 \leds [0]

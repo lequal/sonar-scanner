@@ -1,0 +1,5 @@
+v 4
+file . "..//spin1.vhdl" "205a1f8709c0a34c81f154ee8cd16c130c71f53b" "20210401083928.397":
+  architecture spin1 of leds at 6( 5) + 0 on 12;
+file . "..//leds.vhdl" "2766db71b1c376d2c3954fc69d1b5185cafe5932" "20210401083928.395":
+  entity leds at 1( 0) + 0 on 11;

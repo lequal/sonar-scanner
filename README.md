@@ -1,8 +1,8 @@
 # CNES sonar-scanner image \[client\]
 
-![](https://github.com/cnescatlab/sonar-scanner/workflows/CI/badge.svg)
-![](https://github.com/cnescatlab/sonar-scanner/workflows/CD/badge.svg)
-[![Codacy Badge](https://app.codacy.com/project/badge/Grade/f5f71dea84ce4020ab15a99fc841a696)](https://www.codacy.com/gh/cnescatlab/sonar-scanner?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=lequal/sonar-scanner&amp;utm_campaign=Badge_Grade)
+![](https://github.com/VHDLTool/Docker-sonar-scanner-vhdl/workflows/CI/badge.svg)
+![](https://github.com/VHDLTool/Docker-sonar-scanner-vhdl/workflows/CD/badge.svg)
+
 
 > Docker environment containing open source code analysis tools configured by CNES and dedicated to Continuous Integration.
 
@@ -24,8 +24,9 @@ Additional features are:
     * see the [list](#analysis-tools-included)
 * Configuration files
     * [pylintrc](#how-to-use-embedded-CNES-pylintrc)
+* Zamiacad eclipse rulechecker for VHDL analysis
 
-_This image is made to be used in conjunction with a pre-configured SonarQube server image that embeds all necessary plugins and configuration: [cnescatlab/sonarqube](https://github.com/cnescatlab/sonarqube). It is, however, not mandatory to use it._
+_This image is made to be used in conjunction with a pre-configured SonarQube server image that embeds all necessary plugins and configuration: [cnescatlab/sonarqube-vhdl](https://github.com/VHDLTool/Docker-sonarqube-vhdl). 
 
 ## User guide
 
@@ -38,16 +39,25 @@ _This image is made to be used in conjunction with a pre-configured SonarQube se
             -u "$(id -u):$(id -g)" \
             -e SONAR_HOST_URL="url of your SonarQube instance" \
             -v "$(pwd):/usr/src" \
-            lequal/sonar-scanner
+            lequal/sonar-scanner-vhdl
     ```
     This docker command is equivalent to `sonar-scanner -Dsonar.host.url="url of your SonarQube instance"`.
     * If the SonarQube server is running in a container on the same computer, you will need to connect both containers (server and client) to the same bridge so that they can communicate. To do so:
       ```sh
       $ docker network create -d bridge sonarbridge
       $ docker network connect sonarbridge "name of your sonarqube container"
-      # add the following option to the command line when running the lequal/sonar-scanner
+      # add the following option to the command line when running the lequal/sonar-scanner-vhdl
       --net sonarbridge
       ```
+    * To find you server IP you can eexecute the following commands:   
+      Get the sonarqube server Container ID by running:
+      ```sh
+      docker ps
+      ```
+      Use this Container ID to get the dedicated IP address:
+      ```sh
+      docker inspect -f '{{range .NetworkSettings.Networks}} {{.IPAddress}}{{end}}' <MySonarqubeDockerID>
+       ```
 
 This image suffers from the same limitations as the official SonarQube [sonarsource/sonar-scanner-cli](https://hub.docker.com/r/sonarsource/sonar-scanner-cli) image.
 
@@ -64,55 +74,14 @@ $ docker run \
         --rm \
         -u "$(id -u):$(id -g)" \
         -v "$(pwd):/usr/src" \
-        lequal/sonar-scanner \
+        lequal/sonar-scanner-vhdl \
         shellcheck --color always -s bash -f checkstyle my-script.bash
 # where my-script.bash is a file in the current working directory
 ```
 
-For information on how to use these tools, refer to their official documentation.
+For information on how to use these tools, refer to their official documentation or [Cnescatlab documentation for sonarqube original docker](https://github.com/cnescatlab/sonarqube)
 
-#### How to use embedded CNES pylintrc
 
-There are 3 _pylintrc_ embedded in the image under `/opt/python`:
-
-* `pylintrc_RNC_sonar_2017_A_B`
-* `pylintrc_RNC_sonar_2017_C`
-* `pylintrc_RNC_sonar_2017_D`
-
-To use one of these files when running `pylint` from within the container:
-
-```sh
-# pylint with a CNES pylintrc
-$ docker run \
-        --rm \
-        -u "$(id -u):$(id -g)" \
-        -v "$(pwd):/usr/src" \
-        lequal/sonar-scanner \
-        pylint --rcfile=/opt/python/pylintrc_RNC_sonar_2017_A_B my-script.py
-# where my-script.py is a python module in the current working directory
-```
-
-To import pylint results in SonarQube see the [official documentation](https://docs.sonarqube.org/7.9/analysis/languages/python/#header-3). (Summed up: Run pylint with the following template: `pylint <module_or_package> --rcfile=<pylintrc> -r n --msg-template="{path}:{line}: [{msg_id}({symbol}), {obj}] {msg}" > pylint-report.txt`. Activate at least one pylint rule in the Quality Profile the project uses for Python.)
-
-#### How to use other pylintrcs
-
-You may want to use the embedded `pylint` with a pylintrc of yours . In this case, the easiest way to do so is to put a _pylintrc_ file along with the sources.
-
-To then use it:
-
-```sh
-# pylint with a custom pylintrc
-$ docker run \
-        --rm \
-        -u "$(id -u):$(id -g)" \
-        -v "$(pwd):/usr/src" \
-        lequal/sonar-scanner \
-        pylint --rcfile=/usr/src/custom_pylintrc my-script.py
-# where my-script.py is a python module in the current working directory
-# and custom_pylintrc is a pylintrc in the current working directory
-```
-
-On the other hand, if you want to use a CNES _pylintrc_ for your project you can download it directly from github. They are stored on this repository under [pylintrc.d](https://github.com/cnescatlab/sonar-scanner/tree/master/pylintrc.d).
 
 ### Examples usage in CI
 
@@ -120,116 +89,34 @@ This image was made for CI, hence here are some examples. Make sur to use the ri
 
 _These examples still need to be tested._
 
-#### Jenkins
-
-Here are 2 examples of a declarative Jenkinsfile and a scripted Jenkinsfile that call this image in a stage to analyze a project.
-
-```groovy
-// Declarative pipeline
-def sonarqubeURL = 'https://my-sonarqube.com'
-
-pipeline {
-    agent any
-
-    stages {
-        stage('Sonar scan') {
-            steps {
-                sh  """
-                    docker run --rm \
-                        -u "\$(id -u):\$(id -g)" \
-                        -e SONAR_HOST_URL="${sonarqubeURL}" \
-                        -v "\$(pwd):/usr/src" \
-                        lequal/sonar-scanner
-                    """
-            }
-        }
-    }
-}
-```
-
-```groovy
-// Scripted pipeline
-def sonarqubeURL = 'https://my-sonarqube.com'
-
-node {
-    checkout scm
-
-    stage('Sonar scan') {
-        sh  """
-            docker run --rm \
-                  -u "\$(id -u):\$(id -g)" \
-                  -e SONAR_HOST_URL="${sonarqubeURL}" \
-                  -v "\$(pwd):/usr/src" \
-                  lequal/sonar-scanner
-            """
-    }
-}
-```
-
-#### GitHub Actions
-
-Here is a GitHub Actions job of a GitHub Actions workflow that call this image to analyze a project.
-
-```yml
-jobs:
-  sonar-scanning:
-    name: Run CNES sonar-scanner
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - name: Cache sonar-scanner data
-        uses: actions/cache@v2
-        with:
-          path: .sonarcache
-          key: sonar-scanner-cache
-      - run: |
-          mkdir -p .sonarcache
-          docker run --rm \
-                    -u "$(id -u):$(id -g)" \
-                    -e SONAR_HOST_URL="https://my-sonarqube.com" \
-                    -v "$(pwd):/usr/src" \
-                    -v ".sonarcache:/opt/sonar-scanner/.sonar/cache" \
-                    lequal/sonar-scanner
-```
-
-#### Travis CI
-
-Here is a Travis CI script step, in a `.travis.yml`, to analyze a project with this image.
-
-```yml
-cache:
-  directories:
-    - /home/travis/.sonarcache
-
-script:
-  - mkdir -p /home/travis/.sonarcache
-  - docker run --rm \
-        -u "$(id -u):$(id -g)" \
-        -e SONAR_HOST_URL="https://my-sonarqube.com" \
-        -v "$(pwd):/usr/src" \
-        -v "/home/travis/.sonarcache:/opt/sonar-scanner/.sonar/cache" \
-        lequal/sonar-scanner
-```
-
 #### GitLab-CI
 
 Here is GitLab-CI job, in a `.gitlab-ci.yml`, to analyze a project with this image.
 
 ```yml
-sonar-scanning:
-  stage: test
-  cache:
-    key: sonar-scanner-job
-    paths:
-      - .sonarcache
-  script:
-    - mkdir -p .sonarcache
-    - docker run --rm \
-              -u "$(id -u):$(id -g)" \
-              -e SONAR_HOST_URL="https://my-sonarqube.com" \
-              -v "$(pwd):/usr/src" \
-              -v ".sonarcache:/opt/sonar-scanner/.sonar/cache" \
-              lequal/sonar-scanner
+#this wokflow works only on bash linux
+
+variables:
+  #SONAR_TOKEN_CICD # this variable is set in Gitlab project variable parameter
+  #SONAR_HOST_URL # this variable is set in Gitlab project variable paramete
+  GIT_DEPTH: 1
+ 
+stages:
+   - analysecode
+
+sonarqube-job1:
+   allow_failure: false
+   stage: analysecode
+   tags: 
+     - sonarqube
+   script: 
+      - docker run --rm 
+               --network host 
+               -u "$(id -u):$(id -g)"
+               -e SONAR_HOST_URL=$SONAR_HOST_URL 
+               -v "${CI_PROJECT_DIR}:/usr/src:rw" 
+               lequal/sonar-scanner-vhdl -Dsonar.qualitygate.wait=true 
+               -Dsonar.login=$SONAR_TOKEN_CICD -X
 ```
 
 ## Analysis tools included
@@ -245,6 +132,8 @@ sonar-scanning:
 | [RATS](https://code.google.com/archive/p/rough-auditing-tool-for-security/)    | 2.4           | rats-report.xml     |
 | [Frama-C](https://frama-c.com/index.html)                                      | 20.0          |                     |
 | [Infer](https://fbinfer.com/)                                                  | 0.17.0        |                     |
+| [VHDLRC](https://github.com/VHDLTool/sonar-VHDLRC)                             | 3.3           |                     |
+
 
 ## Developer's guide
 
@@ -256,13 +145,38 @@ It is a normal docker image. Thus, it can be built with the following commands.
 
 ```sh
 # from the root of the project
-$ docker build -t lequal/sonar-scanner .
+$ docker build -t lequal/sonar-scanner-vhdl .
 ```
 
 To then run a container with this image see the [user guide](#user-guide).
 
 To run the tests and create your own ones see the [test documentation](https://github.com/cnescatlab/sonar-scanner/tree/develop/tests).
 
+### Debugging the image
+If analysis doesn't perform correctly you can inspect the image by doing the following sequence:
+1. launch the container with a shell (the entrypoint script is not ran).   
+In this case, a bridge was created as sonarbridge to link with the soanrqube container which can be address with IP 172.18.0.2. Notice that the container was given a name : lequalscanner.
+```sh
+docker run --name lequalscanner --net sonarbridge --rm  -e SONAR_HOST_URL="http://172.18.0.2:9000" -it --entrypoint /bin/sh lequal/sonar-scanner-vhdl 
+
+```
+2. Run the following script (on a new windows powershell)
+```sh
+#get container ID and store it in a variable
+$DOCKERID=docker ps -aqf "name=lequalscanner"  
+#copy your sources in the scanner container (you're supposed to be located in your sources directory when executing this script)
+docker cp .  ${DOCKERID}:/usr/src
+#change ownership of the sources
+docker exec -u root  ${DOCKERID} bash -c 'chown -R sonar-scanner:sonar-scanner /usr/src'
+```
+3. Do what ever you needed to be done. You can launch sonar scanner analysis by running the following command in the container shell and then debug the result
+```sh
+kickstartfakedisplay.sh -X
+```
+if you want to use a custom scanner command line you have to initialise first the display with `Xvfb :0 &` and then launch your custom scanner with its command lines:
+```sh
+./rc-scanner-4.1-linux/bin/rc-scanner -X -Dsonar.host.url="http://172.19.0.2:9000"
+```
 ## How to contribute
 
 If you experienced a problem with the image please open an issue. Inside this issue please explain us how to reproduce this issue and paste the log. 
